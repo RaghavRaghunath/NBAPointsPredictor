@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Player Points Predictor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 28rem;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .btn {
+            width: 100%;
+            padding: 0.85rem;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .message-box {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1.5rem;
+            font-weight: 500;
+            text-align: center;
+            display: none; /* Hidden by default */
+        }
+        .message-box.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+        }
+        .message-box.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .message-box.info {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+            border: 1px solid #38bdf8;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">NBA Player Points Predictor</h1>
+        
+        <form id="predictionForm" class="space-y-6">
+            <div class="input-group">
+                <label for="playerName">Player Name:</label>
+                <input type="text" id="playerName" name="playerName" placeholder="e.g., LeBron James" required
+                       class="focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="input-group">
+                <label for="gameDate">Game Date:</label>
+                <input type="date" id="gameDate" name="gameDate" required
+                       class="focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <button type="submit" class="btn">Get Prediction</button>
+        </form>
+
+        <div id="messageBox" class="message-box"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('predictionForm');
+            const messageBox = document.getElementById('messageBox');
+
+            // Set default date to today for convenience
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('gameDate').value = `${year}-${month}-${day}`;
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent default form submission
+
+                messageBox.style.display = 'none'; // Hide previous messages
+                messageBox.classList.remove('success', 'error', 'info'); // Clean up classes
+
+                const playerName = document.getElementById('playerName').value;
+                const gameDate = document.getElementById('gameDate').value;
+
+                if (!playerName || !gameDate) {
+                    showMessage('Please enter both player name and game date.', 'error');
+                    return;
+                }
+
+                try {
+                    // Reverted to relative URL for the Flask backend, as the sandbox environment
+                    // typically proxies these requests correctly to the backend service.
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ playerName, gameDate })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        if (result.status === 'success' && result.prediction !== undefined) {
+                            showMessage(`Predicted Points for ${result.playerName} on ${result.gameDate}: ${result.prediction.toFixed(1)}`, 'success');
+                        } else if (result.status === 'info' && result.message) {
+                            showMessage(result.message, 'info'); // Display info message
+                        }
+                        else {
+                            showMessage(`Prediction failed: ${result.error || 'Unknown error'}`, 'error');
+                        }
+                    } else {
+                        showMessage(`Error: ${result.error || response.statusText}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    showMessage(`An unexpected error occurred: ${error.message}`, 'error');
+                }
+            });
+
+            function showMessage(message, type) {
+                messageBox.textContent = message;
+                messageBox.classList.add(type);
+                messageBox.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
